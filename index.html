@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HKDSE ICT ERD Interactive Practice Platform</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jsplumb/2.15.6/jsplumb.min.js"></script>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --accent: #3498db;
+            --bg: #f4f6f8;
+            --panel-width: 340px;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, sans-serif; }
+
+        body {
+            display: flex;
+            height: 100vh;
+            background-color: var(--bg);
+            color: #333;
+            overflow: hidden;
+        }
+
+        /* Sidebar styling */
+        #sidebar {
+            width: var(--panel-width);
+            background: white;
+            border-right: 2px solid #e2e8f0;
+            padding: 25px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            box-shadow: 4px 0 10px rgba(0,0,0,0.03);
+            z-index: 10;
+            overflow-y: auto;
+        }
+
+        .badge {
+            background: #e74c3c;
+            color: white;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: bold;
+            width: fit-content;
+            letter-spacing: 0.5px;
+        }
+
+        h2 { font-size: 20px; color: var(--primary); }
+        h3 { font-size: 15px; margin-top: 10px; color: #4a5568; }
+        p { font-size: 13.5px; line-height: 1.6; color: #4a5568; }
+
+        /* Workspace Grid Canvas */
+        #workspace {
+            flex-grow: 1;
+            position: relative;
+            background-color: #ffffff;
+            background-image: radial-gradient(#cbd5e1 1.5px, transparent 1.5px);
+            background-size: 24px 24px;
+            overflow: hidden;
+        }
+
+        #toolbar {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            display: flex;
+            gap: 12px;
+            background: white;
+            padding: 10px 15px;
+            border-radius: 30px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+            z-index: 20;
+            align-items: center;
+        }
+
+        button {
+            padding: 8px 16px;
+            border: 1px solid #cbd5e1;
+            background: white;
+            cursor: pointer;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 13px;
+            transition: all 0.2s ease;
+        }
+
+        button:hover { background: #f8fafc; border-color: #94a3b8; }
+        button.action-btn { background: var(--accent); color: white; border: none; padding: 12px; border-radius: 8px; font-size: 15px;}
+        button.action-btn:hover { background: #2980b9; transform: translateY(-1px); }
+
+        /* HKDSE ERD Elements Shape Engine */
+        .erd-element {
+            position: absolute;
+            cursor: move;
+            user-select: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            font-weight: bold;
+            font-size: 12px;
+            color: var(--primary);
+            z-index: 5;
+        }
+
+        /* HKDSE Entity: Rectangle */
+        .entity {
+            width: 120px;
+            height: 50px;
+            background: #fff;
+            border: 2px solid var(--primary);
+        }
+
+        /* HKDSE Attribute: Oval */
+        .attribute {
+            width: 100px;
+            height: 46px;
+            background: #fff;
+            border: 2px solid var(--primary);
+            border-radius: 50%;
+        }
+
+        .pk-attr { text-decoration: underline; font-weight: 800; }
+
+        /* HKDSE Relationship: Diamond */
+        .relationship {
+            width: 65px;
+            height: 65px;
+            background: #fff;
+            border: 2px solid var(--primary);
+            transform: rotate(45deg);
+        }
+        .relationship span { transform: rotate(-45deg); display: block; }
+
+        /* jsPlumb Label Overlays Styles */
+        .jtk-overlay {
+            background: white;
+            padding: 2px 6px;
+            font-weight: bold;
+            font-size: 14px;
+            color: #2c3e50;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+
+        /* Modal Overlays */
+        #props-modal, #results-modal {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+            z-index: 100;
+            width: 340px;
+        }
+
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top:0; left:0; width:100%; height:100%;
+            background: rgba(15, 23, 42, 0.6);
+            z-index: 99;
+        }
+
+        .form-group { margin-bottom: 16px; }
+        .form-group label { display: block; font-size: 12px; margin-bottom: 6px; font-weight: bold; color: #4a5568; }
+        .form-group input, .form-group select { width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px; }
+        
+        .feedback-item { margin-bottom: 8px; padding: 8px; border-radius: 6px; font-size: 13px; }
+        .feedback-success { background: #def7ec; color: #03543f; }
+        .feedback-error { background: #fde8e8; color: #9b1c1c; }
+    </style>
+</head>
+<body>
+
+    <div id="sidebar">
+        <div class="badge">HKDSE ICT ELECTIVE A</div>
+        <h2>ERD Marking Sandbox</h2>
+        <p><strong>Scenario:</strong> Design an ER Diagram for a school library tracking system layout according to HKEAA conventions:</p>
+        <p>1. A <strong>STUDENT</strong> can borrow many <strong>BOOK</strong> entities, or none.<br>
+           2. A <strong>BOOK</strong> can be checked out by at most one student at a time (Optional relationship).<br>
+           3. Define identifying keys: <u>StudentID</u> and <u>ISBN</u>.</p>
+        <hr style="border:0; border-top:1px solid #e2e8f0;">
+        <h3>How to Connect:</h3>
+        <p style="font-size:12px; color:#64748b;">Drag from any element boundary to another to spawn a connection wire line. Double click lines or items to configure metadata values.</p>
+        
+        <button class="action-btn" style="margin-top: auto;" onclick="gradeDseSchema()">Submit & Run Assessment</button>
+    </div>
+
+    <div id="workspace">
+        <div id="toolbar">
+            <button onclick="spawnNode('entity')">⬜ + Entity</button>
+            <button onclick="spawnNode('attribute')">⭕ + Attribute</button>
+            <button onclick="spawnNode('relationship')">🔶 + Relation</button>
+            <button onclick="location.reload()" style="color: #e74c3c; border-color:#fde8e8;">Reset Canvas</button>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="overlay" onclick="closeAllModals()"></div>
+    
+    <div id="props-modal">
+        <h3 style="margin-bottom: 15px;">Configure Element Metadata</h3>
+        <div class="form-group">
+            <label>Component Name Tag (UPPERCASE)</label>
+            <input type="text" id="elem-text">
+        </div>
+        <div class="form-group" id="pk-box">
+            <label><input type="checkbox" id="is-pk"> Is Primary Key? (Underlined Field)</label>
+        </div>
+        <button class="action-btn" style="width: 100%;" onclick="saveElementProps()">Update Node</button>
+    </div>
+
+    <div id="line-modal" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:white; padding:25px; border-radius:12px; box-shadow:0 20px 40px rgba(0,0,0,0.15); z-index:100; width:340px;">
+        <h3 style="margin-bottom: 15px;">HKDSE Structural Indicators</h3>
+        <div class="form-group">
+            <label>Cardinality Metric Ratio</label>
+            <select id="line-cardinality">
+                <option value="">None</option>
+                <option value="1">1 (One-to-One / One-Side)</option>
+                <option value="M">M (Many-Side)</option>
+                <option value="N">N (Alternative Many)</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Participation Constraint Rule</label>
+            <select id="line-participation">
+                <option value="single">Partial Participation (Single Line)</option>
+                <option value="double">Total Participation (Double Line System)</option>
+            </select>
+        </div>
+        <button class="action-btn" style="width: 100%;" onclick="saveLineProps()">Save Line Attributes</button>
+    </div>
+
+    <div id="results-modal">
+        <h3 style="font-size:18px; margin-bottom:10px;">DSE Automated Marker Score</h3>
+        <div id="score-display" style="font-size:32px; font-weight:bold; color:var(--accent); margin-bottom:15px;">0 / 100</div>
+        <div id="feedback-box" style="max-height:200px; overflow-y:auto; margin-bottom:15px;"></div>
+        <button class="action-btn" style="width: 100%; background:#718096;" onclick="closeAllModals()">Review Canvas Workspace</button>
+    </div>
+
+    <script>
+        let jinstance;
+        let activeTargetNode = null;
+        let activeTargetConnection = null;
+        let elementCount = 0;
+
+        // Initialize jsPlumb structural environment core settings
+        jsPlumb.ready(function() {
+            jinstance = jsPlumb.getInstance({
+                Container: "workspace",
+                Connector: ["Straight"],
+                PaintStyle: { stroke: "#2c3e50", strokeWidth: 2 },
+                EndpointStyle: { radius: 4, fill: "#3498db" },
+                Endpoint: "Dot",
+                Anchor
